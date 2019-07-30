@@ -17,7 +17,7 @@ from twilio.rest import Client
 
 # Version 0.1
 # Robert Hirsch
-# hirscr@me.com
+# 
 
 
 # ================================
