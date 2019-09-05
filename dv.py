@@ -15,7 +15,7 @@ import datetime
 import pytz
 from twilio.rest import Client
 
-# Version 0.1
+# Version 0.2
 # Robert Hirsch
 # 
 
