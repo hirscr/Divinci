@@ -27,6 +27,8 @@ Here are the modules Divinci requires
 `from pprint import pprint`  
 `from twilio.rest import Client`  
 
+Divinci does NOT work on any CLI client before 1.0.4
+
 ## Using divinci
 
 First you will have to set up the Config file to be applicable to you. Also in the DV file, I have not generalized the home directory. You will have to change that too. Change every instance of `"/home/vermion/divi_ubuntu/"` to apply to your directory where the divi wallet is. Put the companion app in the same directory.
