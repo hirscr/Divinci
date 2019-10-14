@@ -11,21 +11,21 @@ daily about your staking results for the day as well as whether or not you won a
 
 Here are the modules Divinci requires
 
-`import time  
-import locale  
-import pandas as pd 
-import numpy as np 
-import copy
-import csv
-import sys
-import requests
-import os.path
-import json
-import subprocess
-import datetime
-import pytz
-from pprint import pprint
-from twilio.rest import Client`
+`import time`  
+`import locale  `
+`import pandas as pd `
+`import numpy as np `
+`import copy`
+`import csv`
+`import sys`
+`import requests`
+`import os.path`
+`import json`
+`import subprocess`
+`import datetime`
+`import pytz`
+`from pprint import pprint`
+`from twilio.rest import Client`
 
 ## Using divinci
 
