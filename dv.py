@@ -6,18 +6,19 @@ import pandas as pd
 import numpy as np
 import copy
 import csv
+import sys
 import requests
 import os.path
 import json
 import subprocess
-import pandas as pd
 import datetime
 import pytz
+from pprint import pprint
 from twilio.rest import Client
 
-# Version 0.2
+# Version 0.1
 # Robert Hirsch
-# 
+# hirscr@me.com
 
 
 # ================================
@@ -45,8 +46,10 @@ def cmd(command, **kargs):
             com = [core,command ,kargs.get("account"),str(num), kargs.get("start")]
         if command == "getblock" :
             com = [core,command ,kargs.get("hash")]
-            
-    result = subprocess.run(com,stdout=subprocess.PIPE)
+    try:        
+        result = subprocess.run(com,stdout=subprocess.PIPE)
+    except:
+        pprint(result)
     out = (result.stdout.strip()).decode("utf-8")
     return out
 
@@ -84,7 +87,9 @@ def MakeDFofTXs(txs):
 # output: the unmodified dataframe
 # ================================
 def printTXs(df):
+    pd.set_option('display.max_rows', len(df))
     print(df)
+    pd.reset_option('display.max_rows')
     print("balance: ", getCurrentBalance())
     return df
     
@@ -202,148 +207,296 @@ def GetPrice(coin) :
         resp = resp.text
     return resp[coin]['usd']
 
-
+def GetStakingStatus():
+    try:
+        status=json.loads(cmd("getstakingstatus"))
+    except:
+        return False
+    
+    return status["staking status"]
+    
 
 # ================================
-# ======= Main Code ==============
+# ======= Recordday ==============
 # ================================    
+def recordday():
+
+    firsttime = False
+    df=[]
+
+    # need to start the datafile if it doesnt exist
+    logfilefailed=False
+    if os.path.isfile(ghomedir+gdatafilename) != True:
+        try:
+            with open(gdatafilename, 'w+') as Datafile:
+                writer = csv.writer(Datafile)
+                writer.writerow(['Date-time','Balance','Lottery','Received','Number of Stakes','Daily Income','Daily RoR','Extended RoR','BTCPrice','DiviPrice','$ income'])
+                firsttime=True
+        except:
+            print('failed to open data file' + gdatafilename)
+            logfilefailed=True
+        
+
+
+    walletfailed=False
+    #now let's start eh process of gathering row data. Lets first get more transactions than anyone could ever get in a day
+    try:
+        txs=json.loads(cmd("listtransactions", **{"account" : "*","num" : "300" ,"start" : "0"}))
+    except:
+        walletfailed=True
+
+    # now lets put that into a nice dataframe
+    if (walletfailed==False):
+        print("making dataframe...")
+        df=MakeDFofTXs(txs)
+        # now lets trim the data frame to however many seconds we want to compile data over
+        df=getRecentTXs(df,ginterval)
+
+    stakes=0
+    d=0
+    balance=0
+    oldbalance=0
+    income=0
+    lotterywins=0
+
+    print("compiling data...")
+
+    if len(df)!=0:    #make sure some stakes have actually come in
+        #get current datetime
+        dfdatetime = df.iloc[-1]['datetime']    
+
+        # lets get a balance
+        balance=getCurrentBalance()
+
+        # lets get the lotteries
+        lotterywins=getLotteryTXs(df)["amount"].sum()
+
+        #lets get how much was sent to us
+        received=getReceiveTXs(df)["amount"].sum()
+
+        # now lets gather the stakes using a new dataframe
+        stakes=len(getStakeTXs(df))
+    
+        #get how much was sent out of the wallet
+        sent=getSendTXs(df)["amount"].sum()
+
+        # Get current income
+        #first load in old csv file if this is not the first time
+        oldbalance=0
+        if firsttime != True :
+            previousdata= pd.read_csv(ghomedir+gdatafilename)
+            oldbalance=previousdata.iloc[-1]['Balance']
+            income=balance-oldbalance
+        else:
+            income=balance
+
+            # find the rate fo return fo the day
+        ror=0.0
+        if oldbalance != 0 :
+            ror = (income-lotterywins)/oldbalance
+        else:
+            ror = 0
+
+        #get annualized RoR
+        secondsinyear = 365*24*3600
+        multiple = secondsinyear/ginterval
+        aror=ror*multiple
+
+        d=GetPrice('divi')
+
+        #ok, lets write this shit
+        row=[dfdatetime,balance,lotterywins,received,stakes,income,ror,aror, GetPrice('bitcoin'),d,d*stakes*456]
+        WriteDailyData(row)
+        print("datetime= {} balance = {}, Stakes = {}".format(dfdatetime,balance,stakes))
+
+
+
+    #assemble Message
+
+    if walletfailed==False :
+        #calculate staking income
+        stakemsg="Daily income: " + str(int(stakes)) + " stakes and about $" + str(int(round(d*stakes*456)))
+        #calculate if lottery was won
+        if lotterywins!=0 :
+            numofwins=int(lotterywins/25200)
+            if numofwins>=10:
+                stakemsg=stakemsg + " You won the Big Lottery!"
+                numofwins -= 10
+            stakemsg=stakemsg +" You also won " + str(numofwins) + " small lotteries"
+        
+        if received!=0:
+            stakemsg=stakemsg +" You also received " + str(received) + " divi"
+        
+        if sent!=0:
+            stakemsg=stakemsg +" You also sent out " + str(sent) + " divi"
+    
+        if GetStakingStatus()==False:
+            stakemsg=stakemsg +" Wallet is not staking!"
+    else:
+            stakemsg="WARNING: Wallet Stopped Functioning"
+            print("Wallet Stopped Functioninge")
+
+    if logfilefailed == True:
+        stakemsg=stakemsg + "Log file failed"
+    
+    if len(stakemsg) !=0:
+        sendSMS(stakemsg)
+    # FIX
+    # if no TXS it blows up. if Len(df)=0 it blows up.  datetime = df.iloc[-1]['datetime']    so check that there are txs
+    return
+    
+    
+def sendSMS(msg):
+    client = Client(gsid, gtoken)
+    
+    message = client.messages.create(
+                         body=msg,
+                         from_=gfromphone,
+                         to=gtophone
+                     )
+
+    print("twilio message-id"+message.sid)
+    return
+
+# =====================
+# ==== MAIN ===========
+# ======================
+# use en_US.utf8 when on linux
+# locale.setlocale(locale.LC_ALL, 'en_US.utf8')
+def main(argv):
+    
+    # lets first figure out what is supposed to be happening
+    # give instructions if the user didn't give an arg when calling script
+    if len(sys.argv) == 1:
+        print("********** Divinci *****************")
+        print("<recordday>       to record income results from the last 24 hours")
+        print("<txs> <days>      to see transactions from last <days>")
+        print("<staked> <days>   check for staking rewards over last <days>")
+        print("<lottery>         check to see if you won last lottery")
+        print("<sent> <days>     check for any divi sent over last <days>")
+        print("<received> <days> check for any divi received over last <days>")
+        print("<balance>         print full current balances")
+        print("<price> <coin>    print the current price of divi or btc ")
+        print("<info>            show some stats about the wallet")
+        print("<tail> <num>      to show the last <num> transactions")
+        exit()
+
+    # print('args : ' + str(sys.argv))
+    
+    command = sys.argv[1]
+    args=sys.argv[2:]
+    
+    
+    if command not in ['balance','recordday','info']:
+        if len(args) != 1 and command != 'lottery':
+            print("incorrect number of arguments for command")
+            print("the command requires <days>")
+            exit()
+            
+        if command != 'price':
+            if command=='lottery':
+                timespan=7
+            else:
+                timespan=int(args[0])
+            #estimate possible number of txs
+            if timespan < 1:
+                print("please enter a positive number of days")
+                exit()
+            txspan=int(timespan*60*24*0.1)  #assumes that no one gets more than 10% of all stakes
+            if txspan>gmaxtxs:
+                txspan=gmaxtxs
+            
+            if command=='tail':
+                txspan=timespan   #in this case timespan is number of txs the user wants to see
+                
+            try:
+                resp=cmd("listtransactions", **{"account" : "*","num" : str(txspan) ,"start" : "0"})
+                txs=json.loads(resp)
+            except:
+                print('Wallet failed')
+                pprint(resp)
+                exit()
+                
+            df=MakeDFofTXs(txs)
+            # now lets trim the data frame to however many seconds we want to compile data over
+            if command != 'tail':
+                df=getRecentTXs(df,timespan*60*60*24)
+    
+    if command =='recordday':
+        recordday()
+        exit()
+        
+    if command in ['txs','tail']:
+        printTXs(df)
+        exit()
+
+    if command == 'staked':
+        print("over the last "+args[0]+ " days, you received " +str(len(getStakeTXs(df))) + " Stakes")
+        print("resulting in an additional " + str(getStakeTXs(df)["amount"].sum()) + " Divi")
+        exit()
+    
+    if command == 'sent':
+        print("over the last "+args[0]+ " you sent" +str(getSendTXs(df)["amount"].sum()) + " Divi")
+        exit()
+    
+    if command == 'received':
+        print("over the last "+args[0]+ " you received " +str(getReceiveTXs(df)["amount"].sum()) + " Divi")
+        exit()
+    
+    if command == 'lottery':
+        lotterywins = getLotteryTXs(df)["amount"].sum()
+        if lotterywins!=0 :
+            numofwins=int(lotterywins/25200)
+            if numofwins>=10:
+                print(" You won the Big Lottery!")
+                numofwins -= 10
+            print("You also won " + str(numofwins) + " small lotteries")
+        else: 
+            print("Sorry, you didnt win any lotteries")
+        exit()
+      
+    if command == 'balance': 
+        print("your total wallet balance is: " + str(getCurrentBalance()) + " Divi")
+         
+    if command == 'price':
+        if args[0] in ['divi', 'bitcoin','btc']:
+            if args[0]=='btc':
+                args[0]='bitcoin'
+            print("The price of " +args[0]+ " is " +str(GetPrice(args[0])) + " USD")
+        else:
+            print("I dont do that coin")
+        exit()
+    
+    if command == 'info': 
+        print("Balance: " + str(getCurrentBalance()))
+        print("Staking status:" + str(GetStakingStatus()))
+        exit()
+
+#FUTURE COMMANDS
+# perform commands
+# divisince <"date">
+# incomesince <"date">
+# makehistogram
+# valueof <howmanydivi>
+
+
 
 # first get configuration parameters
-print("opening file...")
-with open('/home/vermion/divi_ubuntu/divinci.conf','r') as cfgfile:
+with open('divinci.conf','r') as cfgfile:
     config = json.load(cfgfile)
 
 gmaxtxs = config[0]['maxtxs']
 gtimezone = config[0]['timezone']
 gdatafilename = config[0]['datafile']
 ghomedir = config[0]['homedir']
-ginterval = config[0]['interval']
+ginterval = config[0]['interval']  
 gsid= config[0]['sid']
 gtoken = config[0]['token']
 gfromphone = config[0]['fromphone']
-gtophone = config[0]['tophone']
+gtophone = config[0]['tophone'] 
 
-firsttime = False
-df=[]
-
-# need to start the datafile if it doesnt exist
-logfilefailed=False
-if os.path.isfile(ghomedir+gdatafilename) != True:
-    try:
-        with open(gdatafilename, 'w+') as Datafile:
-            writer = csv.writer(Datafile)
-            writer.writerow(['Date-time','Balance','Lottery','Received','Number of Stakes','Daily Income','Daily RoR','Extended RoR','BTCPrice','DiviPrice','$ income'])
-            firsttime=True
-    except:
-        print('failed to open data file' + gdatafilename)
-        logfilefailed=True
-        
-
-
-walletfailed=False
-#now let's start eh process of gathering row data. Lets first get more transactions than anyone could ever get in a day
-try:
-    txs=json.loads(cmd("listtransactions", **{"account" : "*","num" : "300" ,"start" : "0"}))
-except:
-    walletfailed=True
-
-# now lets put that into a nice dataframe
-if (walletfailed==False):
-    print("making dataframe...")
-    df=MakeDFofTXs(txs)
-    # now lets trim the data frame to however many seconds we want to compile data over
-    df=getRecentTXs(df,ginterval)
-
-stakes=0
-d=0
-balance=0
-oldbalance=0
-income=0
-lotterywins=0
-
-print("compiling data...")
-
-if len(df)!=0:    #make sure some stakes have actually come in
-    #get current datetime
-    dfdatetime = df.iloc[-1]['datetime']    
-
-    # lets get a balance
-    balance=getCurrentBalance()
-
-    # lets get the lotteries
-    lotterywins=getLotteryTXs(df)["amount"].sum()
-
-    #lets get how much was sent to us
-    received=getReceiveTXs(df)["amount"].sum()
-
-    # now lets gather the stakes using a new dataframe
-    stakes=len(getStakeTXs(df))
-
-    # Get current income
-    #first load in old csv file if this is not the first time
-    oldbalance=0
-    if firsttime != True :
-        previousdata= pd.read_csv(ghomedir+gdatafilename)
-        oldbalance=previousdata.iloc[-1]['Balance']
-        income=balance-oldbalance
-    else:
-        income=balance
-
-        # find the rate fo return fo the day
-    ror=0.0
-    if oldbalance != 0 :
-        ror = (income-lotterywins)/oldbalance
-    else:
-        ror = 0
-
-    #get annualized RoR
-    secondsinyear = 365*24*3600
-    multiple = secondsinyear/ginterval
-    aror=ror*multiple
-
-    d=GetPrice('divi')
-
-    #ok, lets write this shit
-    row=[dfdatetime,balance,lotterywins,received,stakes,income,ror,aror, GetPrice('bitcoin'),d,d*income]
-    WriteDailyData(row)
-
-# Your Account Sid and Auth Token from twilio.com/console
-# DANGER! This is insecure. See http://twil.io/secure
-client = Client(gsid, gtoken)
-
-#assemble Message
-
-if walletfailed==False :
-    stakemsg="Daily income: " + str(int(stakes)) + " stakes and about $" + str(int(round(d*income)))
-
-    if lotterywins!=0 :
-        numofwins=int(lotterywins/25200)
-        if numofwins>=10:
-            stakemsg=stakemsg + " You won the Big Lottery!"
-            numofwins -= 10
-            
-        stakemsg=stakemsg +" You also won " + str(numofwins) + " small lotteries"
-else:
-        stakemsg="WARNING: Wallet Stopped Functioning"
-
-if logfilefailed == True:
-    stakemsg=stakemsg + "Log file failed"
-
-message = client.messages \
-                .create(
-                     body=stakemsg,
-                     from_=gfromphone,
-                     to=gtophone
-                 )
-
-print(message.sid)
-
-# FIX
-# if no TXS it blows up. if Len(df)=0 it blows up.  datetime = df.iloc[-1]['datetime']    so check that there are txs
-
-# Run this script
-#exec(open('dv.py').read())
-
-
-
+if __name__ == "__main__":
+    main(sys.argv[1:])
     
+# Run this script in python
+#exec(open('dv.py').read())
