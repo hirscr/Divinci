@@ -49,20 +49,25 @@ Really, for the rest of this, only the listtransactions command matters.
 
 ## getting to the good stuff
 
-So call listtransactions and pull up the last 300 txs. Then you want to put this human unreadable data into a dataframe.
+Divinci currently has a few commands and you can execute any of them as a cron job or singualrly Here they are.  
+all commands start with 
+`python3 dv.py `
 
-`df=MakeDFofTXs(txs)`
+| **Command** | **Description                                   |
+|---------|---------------------------------------------------------|
+| recordday  | to record income results from the last 24 hours       |
+| txs num  | to see transactions from last <num> days           |
+| staked num  | check for staking rewards over last <num> days |
+| amount | the amount of coins you want to trade (float)           |
+| lottery  |    check to see if you won last lottery             | 
+| sent num  |   check for any divi sent over last <num> days    |
+| received num  |    check for any divi received over last <num> days      | 
+| balance  |   print full current balance          | 
+| price coin  |  right now only coins handled by coin gecko   | 
+| info  |    show some stats about the wallet      | 
+| tail num        |   to show the last <num> transactions in a nice table format       | 
 
-Now you can print a version of the txs with a balance with:
-`printTXs(df)`
 
-Or you can grab a subset of the transactions
-`smallDF=getRecentTXs(df, seconds)`
-
-and then print that.
-
-You can get the current price of any coin
-`GetPrice("divi")'
 
 ## getting a financial started
 I wanted to record daily income, running balance, and the daily income in $, so I set up a cron job to run dv.py every day at midnight. Thus I get a file with each row as follows:
@@ -70,10 +75,10 @@ I wanted to record daily income, running balance, and the daily income in $, so 
 ##### 'Date-time','Balance','Lottery','Received','Number of Stakes','Daily Income','Daily RoR','Extended RoR','BTCPrice','DiviPrice','$ income'
 
 In order to do so, you have to set up the divinci.conf file with the correct data for your set up. It will create the file on
-its own as long as you have set up a file name. dv will add a row every time it is called (which is a pain right now, since I want to use the pretty transaction printing also)
+its own as long as you have set up a file name. dv will add a row every time "recordday" is called.
 
 ## twilio
-to get a text every day, yo uneed ot set up a twilio account. The put the sid and secret and phone numbers into the .conf file. Then you should be good to go. The free credits they give you has lasted me 4 months so far.
+to get a text every day, you need ot set up a twilio account. Then put the sid and secret and phone numbers into the .conf file. Then you should be good to go. The free credits they give you has lasted me 4 months so far. 
 
 
 
