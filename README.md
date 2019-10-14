@@ -7,14 +7,25 @@ Divinci is intended to run along side of your own personal Divi CLI wallet, with
 transactions are viewed as well as being able to record daily staking income for the dreaded tax day.It also texts you
 daily about your staking results for the day as well as whether or not you won a lottery.
 
-I would like to set it up such that you can simply write commands to it from the shell, but I have not yet learned how to do that. Thus you must start python, load it in, then call the functions from the python prompt.
+## what is needed for Divi to function?
 
-to load it in:
-`python`
-`exec(open('dv.py').read())`
+Here are the modules Divinci requires
 
-Now you can call it by functions. Please note, you will probably get a bunch of errors the first time you try. This is 
-Because DV is set up as a script that gets run by crontab every day, once a day. DV does not keep running, it only goes once through. But if you are at python prompt you can still call the functions as needed. Further, DV uses twillio, to send you texts every time crontab calls it. That is how I get my daily staking results and notifications of lottery wins.
+import time
+import locale
+import pandas as pd
+import numpy as np
+import copy
+import csv
+import sys
+import requests
+import os.path
+import json
+import subprocess
+import datetime
+import pytz
+from pprint import pprint
+from twilio.rest import Client
 
 ## Using divinci
 
