@@ -11,10 +11,10 @@ daily about your staking results for the day as well as whether or not you won a
 
 Here are the modules Divinci requires
 
-`import time
-import locale
-import pandas as pd
-import numpy as np
+`import time  
+import locale  
+import pandas as pd 
+import numpy as np 
 import copy
 import csv
 import sys
