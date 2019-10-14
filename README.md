@@ -33,32 +33,7 @@ Divinci does NOT work on any CLI client before 1.0.4
 
 First you will have to set up the Config file to be applicable to you. Also in the DV file, I have not generalized the home directory. You will have to change that too. Change every instance of `"/home/vermion/divi_ubuntu/"` to apply to your directory where the divi wallet is. Put the companion app in the same directory.
 
-Here are the commands for Divinci
 
-`cmd(command, **kargs)`
-
-There are three commands right now that CMD can perform
-1. walletpassphrase
-2. listtransactions
-3. getblock
-
-Also, CMD can perform any other wallet command that doesnt have any arguments like "getinfo" or "getbalance"
-
-Obviously, each requires additional arguments. To use "walletpassphrase" to unlock the wallet you must also pass the passphrase, the amount of time you want the wallet unlocks and whether or not its for staking.
-
-So an example would be:
-`>>>cmd("walletpassphrase",**{"pw": "mypassphrase","time" : "600","staking" : "0"})`
-
- To use "listtransactions" you have to also give the account name (usually "*"), how many transactions you want to see, and 
- how many transactions back you wish to start from. So as an example:
- 
- `>>>txs=cmd("listtransactions", **{"account" : "*","num" : "300" ,"start" : "0"})`
- 
-To use "getblock" you will need the hash of the block you are interested in. Frankly I have not used this for anything and the results are no different than using the command. You need to supply the hash for the block you are interested in which you can get from chainz or diviscan. An example would be:
-
-`>>>cmd("getblock", **{"hash" : "puttheblockhashere"})`
-
-Really, for the rest of this, only the listtransactions command matters.
 
 ## getting to the good stuff
 
