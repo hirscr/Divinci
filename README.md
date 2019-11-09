@@ -44,16 +44,16 @@ all commands start with
 | **Command** | **Description                                   |
 |---------|---------------------------------------------------------|
 | recordday  | to record income results from the last 24 hours       |
-| txs num  | to see transactions from last <num> days           |
-| staked num  | check for staking rewards over last <num> days |
+| txs num  | to see transactions from last "num" days           |
+| staked num  | check for staking rewards over last "num" days |
 | amount | the amount of coins you want to trade (float)           |
 | lottery  |    check to see if you won last lottery             | 
-| sent num  |   check for any divi sent over last <num> days    |
+| sent num  |   check for any divi sent over last "num" days    |
 | received num  |    check for any divi received over last <num> days      | 
 | balance  |   print full current balance          | 
 | price coin  |  right now only coins handled by coin gecko   | 
 | info  |    show some stats about the wallet      | 
-| tail num        |   to show the last <num> transactions in a nice table format       | 
+| tail num        |   to show the last "num" transactions in a nice table format       | 
 
 
 
