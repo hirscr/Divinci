@@ -49,7 +49,7 @@ all commands start with
 | amount | the amount of coins you want to trade (float)           |
 | lottery  |    check to see if you won last lottery             | 
 | sent num  |   check for any divi sent over last "num" days    |
-| received num  |    check for any divi received over last <num> days      | 
+| received num  |    check for any divi received over last "num" days      | 
 | balance  |   print full current balance          | 
 | price coin  |  right now only coins handled by coin gecko   | 
 | info  |    show some stats about the wallet      | 
