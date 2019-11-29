@@ -33,6 +33,15 @@ Divinci does NOT work on any CLI client before 1.0.4
 
 First you will have to set up the Config file to be applicable to you. Also in the DV file, I have not generalized the home directory. You will have to change that too. Change every instance of `"/home/vermion/divi_ubuntu/"` to apply to your directory where the divi wallet is. Put the companion app in the same directory.
 
+I use crontab for two things. First, I schedule a "recordday" once a day to add a staking income line to the financials file. The recordday job will send me a summary as an SMS (if you set up a twilio account). Then, every 5 minutes I schedule a "checkfork" to make sure my wallet has not gotten on to a forked blockchain. The checkfork job will send me a text if it has found that the wallet has been on a forked chain 5 consecutive times. Thus if your wallet gets forked, you will know in 30 minutes.
+
+so my crontab file looks as follows:
+```
+0 0 * * * cd /home/user/divi_ubuntu/ && python3 dv.py recordday >> dvoutput.txt 2>&1
+*/5 * * * * cd /home/user/divi_ubuntu/ && python3 dv.py checkfork >> forkcheck.txt 2>&1
+```
+
+If you want to test the twilio aspect of the scriopt, you can just send a test message to yourself, with the 'smstest' command.
 
 
 ## getting to the good stuff
@@ -54,6 +63,8 @@ all commands start with
 | price coin  |  right now only coins handled by coin gecko   | 
 | info  |    show some stats about the wallet      | 
 | tail num        |   to show the last "num" transactions in a nice table format       | 
+| checkfork        |   checks to see if your wallet is on a forked chain       | 
+| smstest        |   to test your twilio account with divinci       | 
 
 
 
