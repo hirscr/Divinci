@@ -46,6 +46,8 @@ def cmd(command, **kargs):
             com = [core,command ,kargs.get("account"),str(num), kargs.get("start")]
         if command == "getblock" :
             com = [core,command ,kargs.get("hash")]
+        if command == "getblockhash":
+            com = [core,command ,kargs.get("blocknum")]
     try:        
         result = subprocess.run(com,stdout=subprocess.PIPE)
     except:
@@ -358,18 +360,51 @@ def sendSMS(msg):
     print("twilio message-id"+message.sid)
     return
 
+
+def getDiviScanInfo(command):
+    addr='https://api.diviproject.org/v1/' + command + '/'
+    resp = requests.get(addr)
+    try :
+        resp = resp.json()
+    except: 
+        resp = resp.text
+    return resp
+
+
+def checkFork():
+    walletblock=cmd("getblockcount")
+    wallethash= cmd("getblockhash",**{"blocknum" : walletblock})
+    chaininfo=(getDiviScanInfo("blocks"))
+    chainblock=str(chaininfo[0]['height'])
+    print("wallet block : " + walletblock)
+    print("Chain block : " + chainblock)
+    if chainblock!=walletblock:
+        msg="walletblock: {}  chainblock: {} Wallet may be forked!".format(walletblock,chainblock)
+        return msg
+    chainhash=chaininfo[0]['hash']
+    print("wallet hash : " + wallethash)
+    print("chain hash : " + chainhash)
+    if chainhash!=wallethash:
+        msg="Hashes don't Match. Wallet may be forked!"
+        return msg
+    msg="OK"
+    return msg
+
+
 # =====================
 # ==== MAIN ===========
 # ======================
 # use en_US.utf8 when on linux
 # locale.setlocale(locale.LC_ALL, 'en_US.utf8')
 def main(argv):
-    
+    global gforkcount
+    global config
     # lets first figure out what is supposed to be happening
     # give instructions if the user didn't give an arg when calling script
     if len(sys.argv) == 1:
         print("********** Divinci *****************")
         print("<recordday>       to record income results from the last 24 hours")
+        print("<checkfork>       to check if the wallet is on the main blockchain")
         print("<txs> <days>      to see transactions from last <days>")
         print("<staked> <days>   check for staking rewards over last <days>")
         print("<lottery>         check to see if you won last lottery")
@@ -379,6 +414,7 @@ def main(argv):
         print("<price> <coin>    print the current price of divi or btc ")
         print("<info>            show some stats about the wallet")
         print("<tail> <num>      to show the last <num> transactions")
+        print("<smstest>          sends a test message using your twilio credentials")
         exit()
 
     # print('args : ' + str(sys.argv))
@@ -387,10 +423,15 @@ def main(argv):
     args=sys.argv[2:]
     
     
-    if command not in ['balance','recordday','info']:
+    if command not in ['balance','recordday','info','checkfork','smstest']:
         if len(args) != 1 and command != 'lottery':
             print("incorrect number of arguments for command")
-            print("the command requires <days>")
+            if command == 'price':
+                print("the command requires <coin>")
+            elif command == 'tail':
+                print("the command requires <num>")
+            else:
+                print("the command requires <days>")
             exit()
             
         if command != 'price':
@@ -471,6 +512,28 @@ def main(argv):
         print("Balance: " + str(getCurrentBalance()))
         print("Staking status:" + str(GetStakingStatus()))
         exit()
+    
+    if command == 'checkfork':
+        message=checkFork()
+        if message != "OK":
+            gforkcount=gforkcount+1
+            if gforkcount==5:           #make sure the blockcount or hash doesnt match 5 times
+                sendSMS(message)
+                print(message)
+                gforkcount=0
+        else:
+            print("Wallet is on correct fork of Divi blockchain. Forkcounter = "+ str(gforkcount))
+            gforkcount=0
+        config['forkcount']=gforkcount
+        #update the fork counter
+        with open('divinci.conf','w') as cfgfile:
+            json.dump(config,cfgfile,indent=4)
+        cfgfile.close()
+        exit()
+    
+    if command == 'smstest':
+        sendSMS('Hola! from Divinci')
+
 
 #FUTURE COMMANDS
 # perform commands
@@ -480,20 +543,21 @@ def main(argv):
 # valueof <howmanydivi>
 
 
-
 # first get configuration parameters
 with open('divinci.conf','r') as cfgfile:
     config = json.load(cfgfile)
+cfgfile.close()
 
-gmaxtxs = config[0]['maxtxs']
-gtimezone = config[0]['timezone']
-gdatafilename = config[0]['datafile']
-ghomedir = config[0]['homedir']
-ginterval = config[0]['interval']  
-gsid= config[0]['sid']
-gtoken = config[0]['token']
-gfromphone = config[0]['fromphone']
-gtophone = config[0]['tophone'] 
+gmaxtxs = config['maxtxs']
+gtimezone = config['timezone']
+gdatafilename = config['datafile']
+ghomedir = config['homedir']
+ginterval = config['interval']  
+gsid= config['sid']
+gtoken = config['token']
+gfromphone = config['fromphone']
+gtophone = config['tophone'] 
+gforkcount = config['forkcount'] 
 
 if __name__ == "__main__":
     main(sys.argv[1:])
