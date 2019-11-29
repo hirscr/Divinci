@@ -74,9 +74,9 @@ If you want to test the twilio aspect of the scriopt, you can just send a test m
 
 ## extending divinci for your programming
 
-First you will have to set up the Config file to be applicable to you. Also in the DV file, I have not generalized the home directory. You will have to change that too. Change every instance of `"/home/vermion/divi_ubuntu/"` to apply to your directory where the divi wallet is. Put the companion app in the same directory.
+First you will have to set up the Config file to be applicable to you.  Put the companion app in the same directory as your wallet.
 
-Here are the commands for Divinci
+All commands for Divinci are based around `cmd`
 
 `cmd(command, **kargs)`
 
