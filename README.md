@@ -7,16 +7,72 @@ Divinci is intended to run along side of your own personal Divi CLI wallet, with
 transactions are viewed as well as being able to record daily staking income for the dreaded tax day.It also texts you
 daily about your staking results for the day as well as whether or not you won a lottery.
 
-I would like to set it up such that you can simply write commands to it from the shell, but I have not yet learned how to do that. Thus you must start python, load it in, then call the functions from the python prompt.
+## setting up Divinci
+Divinci is a script. So go into the divi_ubuntu directory, install dv.py and divinci.conf. Edit the divinci.conf file to be appropriate for your user directory, your timezone (you may have to do some googling to find the correct thing to put there), your twilio credentials. Then you are going to have to make sure you have the correct libraries installed. So issues the following commands:
+```
+pip3 install pandas 
+pip3 install requests
+pip3 install pprint 
+pip3 install twilio 
+```
 
-to load it in:
-`python`
-`exec(open('dv.py').read())`
+Next you want to set up an alias for divinci. To do so, use the following command:
+```alias dv='python3 dv.py'```
 
-Now you can call it by functions. Please note, you will probably get a bunch of errors the first time you try. This is 
-Because DV is set up as a script that gets run by crontab every day, once a day. DV does not keep running, it only goes once through. But if you are at python prompt you can still call the functions as needed. Further, DV uses twillio, to send you texts every time crontab calls it. That is how I get my daily staking results and notifications of lottery wins.
+This will allow you to easily, run the commands that are sent to the script.
 
-## Using divinci
+## using Divinci
+Divinci has the following commands
+
+| **Command** | **Description                                           |
+|-------------|---------------------------------------------------------|
+| recordday  | to record income results from the last 24 hours       |
+| txs num  | to see transactions from last "num" days           |
+| staked num  | check for staking rewards over last "num" days |
+| amount | the amount of coins you want to trade (float)           |
+| lottery  |    check to see if you won last lottery             | 
+| sent num  |   check for any divi sent over last "num" days    |
+| received num  |    check for any divi received over last "num" days      | 
+| balance  |   print full current balance          | 
+| price coin  |  right now only coins handled by coin gecko   | 
+| info  |    show some stats about the wallet      | 
+| tail num        |   to show the last "num" transactions in a nice table format       | 
+| checkfork        |   checks to see if your wallet is on a forked chain       | 
+| smstest        |   to test your twilio account with divinci       | 
+
+so, to use any command you simply write `dv command argument` examples as follows:
+```
+dv smstest
+dv recordday
+dv checkfork
+dv staked 5
+dv price divi
+```
+
+
+## getting a financial started
+I wanted to record daily income, running balance, and the daily income in $, so I set up a cron job to run dv.py every day at midnight. Thus I get a file with each row as follows:
+
+##### 'Date-time','Balance','Lottery','Received','Number of Stakes','Daily Income','Daily RoR','Extended RoR','BTCPrice','DiviPrice','$ income'
+
+In order to do so, you have to set up the divinci.conf file with the correct data for your set up. Also, make sure it is called "divinci.conf" not the example name. It will create the file on its own as long as you have set up a file name. dv will add a row every time the `recordday` command is called.
+
+## using crontab
+I use crontab for two things. First, I schedule a "recordday" once a day to add a staking income line to the financials file. The recordday job will send me a summary as an SMS (if you set up a twilio account). Then, every 5 minutes I schedule a "checkfork" to make sure my wallet has not gotten on to a forked blockchain. The checkfork job will send me a text if it has found that the wallet has been on a forked chain 5 consecutive times. Thus if your wallet gets forked, you will know in 30 minutes.
+
+so my crontab file looks as follows:
+```
+0 0 * * * cd /home/user/divi_ubuntu/ && python3 dv.py recordday >> dvoutput.txt 2>&1
+*/5 * * * * cd /home/user/divi_ubuntu/ && python3 dv.py checkfork >> forkcheck.txt 2>&1
+```
+
+## twilio
+to get a text every day, you need to set up a twilio account. The put the sid and secret and phone numbers into the .conf file. Then you should be good to go. The free credits they give you has lasted me 4 months so far.
+
+If you want to test the twilio aspect of the scriopt, you can just send a test message to yourself, with the 'smstest' command.
+
+
+## extending divinci for your programming
 
 First you will have to set up the Config file to be applicable to you. Also in the DV file, I have not generalized the home directory. You will have to change that too. Change every instance of `"/home/vermion/divi_ubuntu/"` to apply to your directory where the divi wallet is. Put the companion app in the same directory.
 
@@ -64,18 +120,4 @@ and then print that.
 You can get the current price of any coin
 `GetPrice("divi")'
 
-## getting a financial started
-I wanted to record daily income, running balance, and the daily income in $, so I set up a cron job to run dv.py every day at midnight. Thus I get a file with each row as follows:
 
-##### 'Date-time','Balance','Lottery','Received','Number of Stakes','Daily Income','Daily RoR','Extended RoR','BTCPrice','DiviPrice','$ income'
-
-In order to do so, you have to set up the divinci.conf file with the correct data for your set up. It will create the file on
-its own as long as you have set up a file name. dv will add a row every time it is called (which is a pain right now, since I want to use the pretty transaction printing also)
-
-## twilio
-to get a text every day, yo uneed ot set up a twilio account. The put the sid and secret and phone numbers into the .conf file. Then you should be good to go. The free credits they give you has lasted me 4 months so far.
-
-
-
-
- 
