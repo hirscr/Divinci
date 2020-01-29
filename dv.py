@@ -496,9 +496,9 @@ def main(argv):
     args=sys.argv[2:]
     
     
-    if command not in ['balance','send','multisend','lottery','recordday',
+    if command not in ['balance','send','multisend','recordday',
 							'info','checkfork','smstest','lock']:
-        if len(args) != 1:
+        if len(args) != 1 and command != 'lottery':
             print("incorrect number of arguments for command")
             if command == 'price':
                 print("the command requires <coin>")
@@ -510,35 +510,35 @@ def main(argv):
                 print("the command requires <days>")
             exit()
             
-    if command not in ['price','unlock']:
-        if command=='lottery':
-            timespan=7
-        else:
-            timespan=int(args[0])
-        #estimate possible number of txs
-        if timespan < 1:
-            print("please enter a positive number of days")
-            exit()
-        txspan=int(timespan*60*24*0.1)  #assumes that no one gets more than 10% of all stakes
-        if txspan>gmaxtxs:
-            txspan=gmaxtxs
-        
-        if command=='tail':
-            txspan=timespan   #in this case timespan is number of txs the user wants to see
+        if command not in ['price','unlock']:
+            if command=='lottery':
+                timespan=7
+            else:
+                timespan=int(args[0])
+            #estimate possible number of txs
+            if timespan < 1:
+                print("please enter a positive number of days")
+                exit()
+            txspan=int(timespan*60*24*0.1)  #assumes that no one gets more than 10% of all stakes
+            if txspan>gmaxtxs:
+                txspan=gmaxtxs
             
-        try:
-            resp=cmd("listtransactions", **{"account" : "*","num" : str(txspan) ,"start" : "0"})
-            txs=json.loads(resp)
-        except:
-            print('Wallet failed')
-            pprint(resp)
-            exit()
+            if command=='tail':
+                txspan=timespan   #in this case timespan is number of txs the user wants to see
+                
+            try:
+                resp=cmd("listtransactions", **{"account" : "*","num" : str(txspan) ,"start" : "0"})
+                txs=json.loads(resp)
+            except:
+                print('Wallet failed')
+                pprint(resp)
+                exit()
 
-        
-        df=MakeDFofTXs(txs)
-        # now lets trim the data frame to however many seconds we want to compile data over
-        if command != 'tail':
-            df=getRecentTXs(df,timespan*60*60*24)
+            
+            df=MakeDFofTXs(txs)
+            # now lets trim the data frame to however many seconds we want to compile data over
+            if command != 'tail':
+                df=getRecentTXs(df,timespan*60*60*24)
     
     if command =='recordday':
         recordday()
