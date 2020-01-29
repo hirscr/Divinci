@@ -14,6 +14,7 @@ pip3 install pandas
 pip3 install requests
 pip3 install pprint 
 pip3 install twilio 
+pip3 install commentjson
 ```
 
 Next you want to set up an alias for divinci. To do so, use the following command:
@@ -39,6 +40,11 @@ Divinci has the following commands
 | tail num        |   to show the last "num" transactions in a nice table format       | 
 | checkfork        |   checks to see if your wallet is on a forked chain       | 
 | smstest        |   to test your twilio account with divinci       | 
+| multisend     |  send -amount- in -lot- batches       | 
+| send           | send -amount- to an address       | 
+| unlock         | unlocks the wallet for -seconds-       | 
+| lock            locks the wallet for staking       | 
+
 
 so, to use any command you simply write `dv command argument` examples as follows:
 ```
@@ -49,6 +55,7 @@ dv staked 5
 dv price divi
 ```
 
+You will also need to set up the divinci.conf file. There are comments in the file that guide you on what to put. Take care about where commas are and what needs quotes.
 
 ## getting a financial started
 I wanted to record daily income, running balance, and the daily income in $, so I set up a cron job to run dv.py every day at midnight. Thus I get a file with each row as follows:
