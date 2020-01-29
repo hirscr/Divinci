@@ -43,7 +43,7 @@ Divinci has the following commands
 | multisend     |  send -amount- in -lot- batches       | 
 | send           | send -amount- to an address       | 
 | unlock         | unlocks the wallet for -seconds-       | 
-| lock            locks the wallet for staking       | 
+| lock           | locks the wallet for staking       | 
 
 
 so, to use any command you simply write `dv command argument` examples as follows:
