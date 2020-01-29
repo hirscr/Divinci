@@ -13,8 +13,10 @@ import json
 import subprocess
 import datetime
 import pytz
+import commentjson
 from pprint import pprint
 from twilio.rest import Client
+
 
 # Version 0.1
 # Robert Hirsch
@@ -33,25 +35,42 @@ from twilio.rest import Client
 # ================================
 def cmd(command, **kargs):
 # some args may be address, amounts, intervals, etc
-    core = "/home/vermion/divi_ubuntu/divi-cli"
+    core = ghomedir +"divi-cli"
     com=[core,command]
     out='boo'
     if len(kargs) != 0:
         if command == "walletpassphrase":
-            com = [core,command ,kargs.get("pw"),kargs.get("time"), kargs.get("staking")]
+            if kargs.get("staking") != "":
+                com = [core,command ,kargs.get("pw"),kargs.get("time"), kargs.get("staking")]
+            else:
+                com = [core,command ,kargs.get("pw"),kargs.get("time")]
+			
         if command == "listtransactions":
             num=int(kargs.get("num"))
             if num > gmaxtxs :
                 num = gmaxtxs
             com = [core,command ,kargs.get("account"),str(num), kargs.get("start")]
+			
         if command == "getblock" :
             com = [core,command ,kargs.get("hash")]
+			
         if command == "getblockhash":
             com = [core,command ,kargs.get("blocknum")]
+			
+        if command == "sendtoaddress" :
+            com= [core,command ,kargs.get("address"),kargs.get("amount")]
+        
+        if command == "gettransaction" :
+            com= [core,command ,kargs.get("txid")]
+			
+        #print(com)
     try:        
         result = subprocess.run(com,stdout=subprocess.PIPE)
     except:
-        pprint(result)
+        s=" "
+        print("subprocess failed: com= " + s.join(com))
+        out = "fail"
+        return out
     out = (result.stdout.strip()).decode("utf-8")
     return out
 
@@ -317,7 +336,7 @@ def recordday():
 
     if walletfailed==False :
         #calculate staking income
-        stakemsg="Daily income: " + str(int(stakes)) + " stakes and about $" + str(int(round(d*stakes*456)))
+        stakemsg="Hello from "+gwalletname+"! Daily income: " + str(int(stakes)) + " stakes and about $" + str(int(round(d*stakes*456)))
         #calculate if lottery was won
         if lotterywins!=0 :
             numofwins=int(lotterywins/25200)
@@ -390,7 +409,57 @@ def checkFork():
     msg="OK"
     return msg
 
+def getFee(txid):
+    resp = cmd("gettransaction", **{"txid": txid})
+    try:
+        txs = json.loads(resp)
+    except ValueError as e:
+            return(0)
+    else:
+        return (-1*txs["fee"])
+        
 
+def sendFunds(amount, address):
+    #assumes address and amount have been checked, as well as balance remianing
+    try:
+        resp = cmd("sendtoaddress", **{"address": address, "amount": str(amount)})
+    except:
+        return("FAIL","Send Failed")
+    try:
+        txs = json.loads(resp)
+    except ValueError as e:
+        if resp[0:4]=="error":
+            return("FAIL",resp)
+        return ("PASS",resp)
+    else:
+        return("FAIL",txs)
+
+
+def multiSend (amount, address, lot):
+    #assumes address and amount have been checked, as well as balance remaining
+    #adds up fees, then sends one final send assuming 100 divi
+    remaining=amount
+    feesum=0
+    
+    while remaining > lot+100:
+        complete = int((1 - remaining/amount)*100)
+        print(str(complete)+'% complete', end='\r', flush=True)
+        success,resp = sendFunds(lot,address)
+    
+        if success == "FAIL":
+            return(success, resp)
+        else:
+            fee=getFee(resp)
+            remaining=remaining-lot-fee    #fees are negative
+            feesum=feesum+fee
+    print("                                ")
+    retsig = {"fee" : feesum, "remaining" : remaining}
+    return "PASS",retsig
+    
+    
+    
+    
+    
 # =====================
 # ==== MAIN ===========
 # ======================
@@ -402,19 +471,23 @@ def main(argv):
     # lets first figure out what is supposed to be happening
     # give instructions if the user didn't give an arg when calling script
     if len(sys.argv) == 1:
-        print("********** Divinci *****************")
+        print("********** Divinci CLI Helper *****************")
         print("<recordday>       to record income results from the last 24 hours")
         print("<checkfork>       to check if the wallet is on the main blockchain")
         print("<txs> <days>      to see transactions from last <days>")
         print("<staked> <days>   check for staking rewards over last <days>")
-        print("<lottery>         check to see if you won last lottery")
+        print("<lottery>         check to see if you won recent lottery")
         print("<sent> <days>     check for any divi sent over last <days>")
         print("<received> <days> check for any divi received over last <days>")
         print("<balance>         print full current balances")
         print("<price> <coin>    print the current price of divi or btc ")
         print("<info>            show some stats about the wallet")
         print("<tail> <num>      to show the last <num> transactions")
-        print("<smstest>          sends a test message using your twilio credentials")
+        print("<smstest>         sends a test message using your twilio credentials")
+        print("<multisend> <amount> <address> <lot> send <amount> in <lot> batches")
+        print("<send> <amount> <address> 	useful for a cron task")
+        print("<unlock> <seconds>			unlocks the wallet")
+        print("<lock>            locks the wallet for staking")
         exit()
 
     # print('args : ' + str(sys.argv))
@@ -423,45 +496,49 @@ def main(argv):
     args=sys.argv[2:]
     
     
-    if command not in ['balance','recordday','info','checkfork','smstest']:
-        if len(args) != 1 and command != 'lottery':
+    if command not in ['balance','send','multisend','lottery','recordday',
+							'info','checkfork','smstest','lock']:
+        if len(args) != 1:
             print("incorrect number of arguments for command")
             if command == 'price':
                 print("the command requires <coin>")
             elif command == 'tail':
                 print("the command requires <num>")
+            elif command == 'unlock':
+                print("the command requires <seconds>")
             else:
                 print("the command requires <days>")
             exit()
             
-        if command != 'price':
-            if command=='lottery':
-                timespan=7
-            else:
-                timespan=int(args[0])
-            #estimate possible number of txs
-            if timespan < 1:
-                print("please enter a positive number of days")
-                exit()
-            txspan=int(timespan*60*24*0.1)  #assumes that no one gets more than 10% of all stakes
-            if txspan>gmaxtxs:
-                txspan=gmaxtxs
+    if command not in ['price','unlock']:
+        if command=='lottery':
+            timespan=7
+        else:
+            timespan=int(args[0])
+        #estimate possible number of txs
+        if timespan < 1:
+            print("please enter a positive number of days")
+            exit()
+        txspan=int(timespan*60*24*0.1)  #assumes that no one gets more than 10% of all stakes
+        if txspan>gmaxtxs:
+            txspan=gmaxtxs
+        
+        if command=='tail':
+            txspan=timespan   #in this case timespan is number of txs the user wants to see
             
-            if command=='tail':
-                txspan=timespan   #in this case timespan is number of txs the user wants to see
-                
-            try:
-                resp=cmd("listtransactions", **{"account" : "*","num" : str(txspan) ,"start" : "0"})
-                txs=json.loads(resp)
-            except:
-                print('Wallet failed')
-                pprint(resp)
-                exit()
-                
-            df=MakeDFofTXs(txs)
-            # now lets trim the data frame to however many seconds we want to compile data over
-            if command != 'tail':
-                df=getRecentTXs(df,timespan*60*60*24)
+        try:
+            resp=cmd("listtransactions", **{"account" : "*","num" : str(txspan) ,"start" : "0"})
+            txs=json.loads(resp)
+        except:
+            print('Wallet failed')
+            pprint(resp)
+            exit()
+
+        
+        df=MakeDFofTXs(txs)
+        # now lets trim the data frame to however many seconds we want to compile data over
+        if command != 'tail':
+            df=getRecentTXs(df,timespan*60*60*24)
     
     if command =='recordday':
         recordday()
@@ -532,10 +609,85 @@ def main(argv):
         exit()
     
     if command == 'smstest':
-        sendSMS('Hola! from Divinci')
+        sendSMS('Hola! from ' + gwalletname)
+
+    if command in ['send','multisend']:
+        if len(args) < 2:
+            print("the send command requires <amount> and <address>")
+            exit()
+        try:
+            amount = float(args[0])
+        except:
+            print("Amount must be a floating point number")
+            exit()
+
+        addr = args[1]
+
+        if addr[0] != 'D' and len(addr) != 34:
+            print("that is not a valid Divi address")
+            exit()
+
+        if amount > getCurrentBalance():
+            print("You don't enough funds")
+            exit()
+        
+        if command == 'send':
+            # we already have checked that the amount is a float and the address is valid
+    
+            success, resp = sendFunds(amount,addr)
+            
+            if success=="FAIL":
+                pprint(resp)
+            else:
+                print("TXID: " + resp)
+            exit()
+        else:
+            if len(args) != 3:
+                print("multisend need a lot size")
+                exit()
+            
+            try:
+                lot = float(args[2])
+            except:
+                print("Lot must be a floating point number")
+                exit()
+            
+            if lot>amount/2 :
+                print("Lot size must be smaller than half the amount being sent")
+                exit()
+            
+            success, resp = multiSend(amount,addr,lot)
+            if success=="FAIL":
+                pprint(resp)
+            else:
+                fee= resp["fee"]
+                remaining= resp["remaining"]
+                print("Success!")
+                print(" Remaining Divi from multisend: " + str(remaining))
+                print(" total fees: " ,str(fee))
+            exit()
+			
+    if command == 'unlock':  #unlock for <seconds> seconds, already checked for seconds arg
+        seconds=args[0]
+        try:
+            resp = cmd("walletpassphrase", **{"pw": gacctpw, "time": str(seconds), "staking":""})
+            #txs = json.loads(resp)
+        except:
+            print('wallet unlock failed')
+            pprint(resp)
+            exit()
+
+    if command == 'lock':
+        try:
+            resp = cmd("walletpassphrase", **{"pw": gacctpw, "time": "0","staking":"true"})
+            #txs = json.loads(resp)
+        except:
+            print('wallet unable to lock')
+            pprint(resp)
+            exit()
 
 
-#FUTURE COMMANDS
+    #FUTURE COMMANDS
 # perform commands
 # divisince <"date">
 # incomesince <"date">
@@ -545,7 +697,7 @@ def main(argv):
 
 # first get configuration parameters
 with open('divinci.conf','r') as cfgfile:
-    config = json.load(cfgfile)
+    config = commentjson.load(cfgfile)
 cfgfile.close()
 
 gmaxtxs = config['maxtxs']
@@ -557,7 +709,9 @@ gsid= config['sid']
 gtoken = config['token']
 gfromphone = config['fromphone']
 gtophone = config['tophone'] 
-gforkcount = config['forkcount'] 
+gforkcount = config['forkcount']
+gacctpw = config['acctpw']
+gwalletname = config['walletname']
 
 if __name__ == "__main__":
     main(sys.argv[1:])
