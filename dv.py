@@ -59,11 +59,12 @@ def cmd(command, **kargs):
             com = [core, command, kargs.get("txid")]
 
     result = "error calling subprocess"
+    out=False
     try:
         result = subprocess.run(com, stdout=subprocess.PIPE)
+        out = (result.stdout.strip()).decode("utf-8")
     except:
         pprint(result)
-    out = (result.stdout.strip()).decode("utf-8")
     return out
 
 
