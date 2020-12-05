@@ -156,7 +156,11 @@ def getRecentTXs(df, seconds):
 # output: a reduced data frame
 # ================================
 def getStakeTXs(df):
-    return df.loc[df['category'] == 'stake_reward']
+    global gstakesize
+    df=df.loc[df['category'] == 'stake_reward']
+    if len(df)>0:
+        gstakesize=df[0]['amount']
+    return df
 
 
 # ================================
@@ -727,6 +731,7 @@ gtophone = config['tophone']
 gforkcount = config['forkcount']
 gacctpw = config['acctpw']
 gwalletname = config['walletname']
+gstakesize = 418
 
 if __name__ == "__main__":
     main(sys.argv[1:])
