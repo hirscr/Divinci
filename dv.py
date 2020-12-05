@@ -333,7 +333,7 @@ def recordday():
 
         # ok, lets write this shit
         row = [dfdatetime, balance, lotterywins, received, stakes, income, ror, aror, GetPrice('bitcoin'), d,
-               d * stakes * 456]
+               d * stakes * 418]
         WriteDailyData(row)
         print("datetime= {} balance = {}, Stakes = {}".format(dfdatetime, balance, stakes))
 
@@ -342,7 +342,7 @@ def recordday():
     if walletfailed == False:
         # calculate staking income
         stakemsg = "Hello from " + gwalletname + "! Daily income: " + str(int(stakes)) + " stakes and about $" + str(
-            int(round(d * stakes * 456))) + '\n'
+            int(round(d * stakes * 418))) + '\n'
         # calculate if lottery was won
         if lotterywins != 0:
             numofwins = int(lotterywins / 25200)
