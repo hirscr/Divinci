@@ -82,11 +82,18 @@ def MakeDFofTXs(txs):
     timediffs = [0]
     for i in txs:  # for each tx
         if i["confirmations"] != -1:  # sometimes confirmartions gives a -1 and no blockhash...why? dunno
-            time.append(i["blocktime"])
-            confirms.append(i["confirmations"])
-            amount.append(i["amount"])
-            blocknum.append(json.loads(cmd("getblock", **{"hash": i["blockhash"]}))["height"])
-            category.append(i["category"])
+            try:
+                time.append(i["blocktime"])
+                confirms.append(i["confirmations"])
+                amount.append(i["amount"])
+                blocknum.append(json.loads(cmd("getblock", **{"hash": i["blockhash"]}))["height"])
+                category.append(i["category"])
+            except:
+                df=[]
+                print("unable to disseminate this transaction")
+                pprint(i)
+                print('Try to wait a little bit until all the block data is available')
+                return df
 
     df = pd.DataFrame({'time': time, 'confirms': confirms, 'amount': amount, 'category': category}, index=blocknum)
     df['dTime'] = (df['time'].shift(1) - df['time']) * -1
@@ -233,6 +240,7 @@ def GetPrice(coin):
         resp = resp.json()
     except:
         resp = resp.text
+        return resp
     return resp[coin]['usd']
 
 
@@ -399,14 +407,17 @@ def getDiviScanInfo(command):
         resp = resp.json()
     except:
         resp = resp.text
+        return resp
     return resp
 
 
 def checkFork():
     walletblock = cmd("getblockcount")
     wallethash = cmd("getblockhash", **{"blocknum": walletblock})
-    chaininfo = (getDiviScanInfo("blocks"))
-    chainblock = str(chaininfo[0]['height'])
+    chaininfo = getDiviScanInfo("blocks")
+    chainblock="Diviscan not available"
+    if not isinstance(chaininfo, str):
+        chainblock = str(chaininfo[0]['height'])
     print("wallet block : " + walletblock)
     print("Chain block : " + chainblock)
     if chainblock != walletblock:
@@ -433,7 +444,7 @@ def getFee(txid):
 
 
 def sendFunds(amount, address):
-    # assumes address and amount have been checked, as well as balance remianing
+    # assumes address and amount have been checked, as well as balance remaining
     try:
         resp = cmd("sendtoaddress", **{"address": address, "amount": str(amount)})
     except:
@@ -456,7 +467,7 @@ def multiSend(amount, address, lot):
 
     while remaining > lot + 100:
         complete = int((1 - remaining / amount) * 100)
-        print(str(complete) + '% complete', end='\r', flush=True)
+        print('complete' + str(complete) + '%')
         success, resp = sendFunds(lot, address)
 
         if success == "FAIL":
