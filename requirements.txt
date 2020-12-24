@@ -1,6 +1,5 @@
 pandas>=1.1.4
 requests>=2.25.0
 pytz>=2019.2
-pprint>=0.1
 twilio>=6.48.0
 setuptools>=50.3.2
