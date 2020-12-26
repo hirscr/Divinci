@@ -728,8 +728,8 @@ def main(argv):
 
 
 # first get configuration parameters
-cwd = os.getcwd()
-with open(cwd + '/divinci.conf', 'r') as cfgfile:
+cwd = os.path.expanduser('~')+'/Divinci/'
+with open(cwd + 'divinci.conf', 'r') as cfgfile:
     config = json.load(cfgfile)
 cfgfile.close()
 
