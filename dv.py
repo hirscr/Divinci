@@ -5,6 +5,7 @@ import csv
 import sys
 import requests
 import os.path
+import os
 import json
 import subprocess
 import datetime
@@ -63,8 +64,9 @@ def cmd(command, **kargs):
     try:
         result = subprocess.run(com, stdout=subprocess.PIPE)
         out = (result.stdout.strip()).decode("utf-8")
-    except:
+    except OSError as e:
         pprint(result)
+        print("likely you hav directory wrong")
     return out
 
 
@@ -726,7 +728,8 @@ def main(argv):
 
 
 # first get configuration parameters
-with open('divinci.conf', 'r') as cfgfile:
+cwd = os.getcwd()
+with open(cwd + '/divinci.conf', 'r') as cfgfile:
     config = json.load(cfgfile)
 cfgfile.close()
 
