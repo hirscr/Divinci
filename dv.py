@@ -221,7 +221,7 @@ def getMasternodeTXs(df):
 def WriteDailyData(row):
     status = True
     try:
-        with open(ghomedir + gdatafilename, 'a') as Datafile:
+        with open(cwd + gdatafilename, 'a') as Datafile:
             RowWriter = csv.writer(Datafile, delimiter=',')
             RowWriter.writerow(row)
     except:
@@ -265,7 +265,7 @@ def recordday():
 
     # need to start the datafile if it doesnt exist
     logfilefailed = False
-    if os.path.isfile(ghomedir + gdatafilename) != True:
+    if os.path.isfile(cwd + gdatafilename) != True:
         try:
             with open(gdatafilename, 'w+') as Datafile:
                 writer = csv.writer(Datafile)
@@ -325,7 +325,7 @@ def recordday():
         # first load in old csv file if this is not the first time
         oldbalance = 0
         if firsttime != True:
-            previousdata = pd.read_csv(ghomedir + gdatafilename)
+            previousdata = pd.read_csv(cwd + gdatafilename)
             oldbalance = previousdata.iloc[-1]['Balance']
             income = balance - oldbalance
         else:
