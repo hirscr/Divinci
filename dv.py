@@ -226,6 +226,7 @@ def WriteDailyData(row):
             RowWriter.writerow(row)
     except:
         status = False
+        Datafile.close()
     return status
 
 
@@ -272,6 +273,7 @@ def recordday():
                 writer.writerow(
                     ['Date-time', 'Balance', 'Lottery', 'Received', 'Number of Stakes', 'Daily Income', 'Daily RoR',
                      'Extended RoR', 'BTCPrice', 'DiviPrice', '$ income'])
+                Datafile.close()
                 firsttime = True
         except:
             print('failed to open data file' + gdatafilename)
@@ -620,7 +622,7 @@ def main(argv):
         message = checkFork()
         if message != "OK":
             gforkcount = gforkcount + 1
-            if gforkcount == 5:  # make sure the blockcount or hash doesnt match 5 times
+            if gforkcount >= 5:  # make sure the blockcount or hash doesnt match 5 times
                 sendSMS(message)
                 print(message)
                 gforkcount = 0
@@ -629,7 +631,8 @@ def main(argv):
             gforkcount = 0
         config['forkcount'] = gforkcount
         # update the fork counter
-        with open('divinci.conf', 'w') as cfgfile:
+        cwd=os.getcwd()
+        with open(cwd+'divinci.conf', 'w') as cfgfile:
             json.dump(config, cfgfile, indent=4)
         cfgfile.close()
         exit()
