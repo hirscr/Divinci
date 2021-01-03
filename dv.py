@@ -268,7 +268,7 @@ def recordday():
     logfilefailed = False
     if os.path.isfile(cwd + gdatafilename) != True:
         try:
-            with open(gdatafilename, 'w+') as Datafile:
+            with open(cwd + gdatafilename, 'w+') as Datafile:
                 writer = csv.writer(Datafile)
                 writer.writerow(
                     ['Date-time', 'Balance', 'Lottery', 'Received', 'Number of Stakes', 'Daily Income', 'Daily RoR',
@@ -349,7 +349,7 @@ def recordday():
 
         # ok, lets write this shit
         row = [dfdatetime, balance, lotterywins, received, stakes, income, ror, aror, GetPrice('bitcoin'), d,
-               d * stakes * 418]
+               d * stakes * gstakesize]
         WriteDailyData(row)
         print("datetime= {} balance = {}, Stakes = {}".format(dfdatetime, balance, stakes))
 
@@ -358,7 +358,7 @@ def recordday():
     if walletfailed == False:
         # calculate staking income
         stakemsg = "Hello from " + gwalletname + "! Daily income: " + str(int(stakes)) + " stakes and about $" + str(
-            int(round(d * stakes * 418))) + '\n'
+            int(round(d * stakes * gstakesize))) + '\n'
         # calculate if lottery was won
         if lotterywins != 0:
             numofwins = int(lotterywins / 25200)
