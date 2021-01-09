@@ -103,6 +103,7 @@ def MakeDFofTXs(txs):
     df['dTime'] = (df['time'].shift(1) - df['time']) * -1
     df['dTime'].fillna(value=0)
     df['datetime'] = df.apply(lambda row: findDateTime(row.time), axis=1)
+    df['difficulty'] = difficulty
     return df
 
 
