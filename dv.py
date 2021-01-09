@@ -81,6 +81,7 @@ def MakeDFofTXs(txs):
     amount = []
     blocknum = []
     category = []
+    difficulty = []
     timediffs = [0]
     for i in txs:  # for each tx
         if i["confirmations"] != -1:  # sometimes confirmartions gives a -1 and no blockhash...why? dunno
@@ -90,6 +91,7 @@ def MakeDFofTXs(txs):
                 amount.append(i["amount"])
                 blocknum.append(json.loads(cmd("getblock", **{"hash": i["blockhash"]}))["height"])
                 category.append(i["category"])
+                difficulty.append(json.loads(cmd("getblock", **{"hash": i["blockhash"]}))["difficulty"])
             except:
                 df=[]
                 print("unable to disseminate this transaction")
@@ -272,7 +274,7 @@ def recordday():
                 writer = csv.writer(Datafile)
                 writer.writerow(
                     ['Date-time', 'Balance', 'Lottery', 'Received', 'Number of Stakes', 'Daily Income', 'Daily RoR',
-                     'Extended RoR', 'BTCPrice', 'DiviPrice', '$ income'])
+                     'Extended RoR', 'BTCPrice', 'DiviPrice', '$ income','difficulty'])
                 Datafile.close()
                 firsttime = True
         except:
@@ -323,6 +325,8 @@ def recordday():
         # get how much was sent out of the wallet
         sent = getSendTXs(df)["amount"].sum()
 
+        avgdifficulty = df["difficulty"].mean()
+
         # Get current income
         # first load in old csv file if this is not the first time
         oldbalance = 0
@@ -347,9 +351,10 @@ def recordday():
 
         d = GetPrice('divi')
 
+
         # ok, lets write this shit
         row = [dfdatetime, balance, lotterywins, received, stakes, income, ror, aror, GetPrice('bitcoin'), d,
-               d * stakes * gstakesize]
+               d * stakes * gstakesize, avgdifficulty]
         WriteDailyData(row)
         print("datetime= {} balance = {}, Stakes = {}".format(dfdatetime, balance, stakes))
 
