@@ -438,6 +438,7 @@ def getDiviScanInfo(command):
 
 
 def checkFork():
+    msg=""
     walletblock = cmd("getblockcount")
     wallethash = cmd("getblockhash", **{"blocknum": walletblock})
     chaininfo = getDiviScanInfo("blocks")
