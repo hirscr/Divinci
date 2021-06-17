@@ -128,7 +128,13 @@ def printTXs(df):
 # output: wallet balance
 # ================================
 def getCurrentBalance():
-    walletinfo = json.loads(cmd("getwalletinfo"))
+    try:
+        walletinfo = json.loads(cmd("getwalletinfo"))
+    except:
+        walletinfo['balance'] = 0
+        walletinfo['immature_balance'] = 0
+        walletinfo['unconfirmed_balance'] = 0
+
     return (walletinfo['balance'] + walletinfo['immature_balance'] + walletinfo['unconfirmed_balance'])
 
 
@@ -251,10 +257,16 @@ def GetPrice(coin):
 
 
 def GetStakingStatus():
-    try:
-        status = json.loads(cmd("getstakingstatus"))
-    except:
-        return False
+    status = {}
+    status["staking status"] = False
+    for trials in range(1,5):
+        try:
+            status = json.loads(cmd("getstakingstatus"))
+        except:
+            pass
+        if status["staking status"] == True:
+            break
+
 
     return status["staking status"]
 
@@ -381,19 +393,21 @@ def recordday():
 
         if GetStakingStatus() == False:
             stakemsg = stakemsg + " Wallet is not staking!"
+
+        stakemsg = stakemsg + "Balance:" + str(getCurrentBalance())
+
     else:
         stakemsg = "WARNING: Wallet Stopped Functioning"
-        print("Wallet Stopped Functioninge")
+        print("Wallet Stopped Functioning")
 
     if logfilefailed == True:
         stakemsg = stakemsg + "Log file failed"
 
-    stakemsg = stakemsg + "Balance:" + str(getCurrentBalance())
 
     if len(stakemsg) != 0:
         sendSMS(stakemsg)
-    # FIX
-    # if no TXS it blows up. if Len(df)=0 it blows up.  datetime = df.iloc[-1]['datetime']    so check that there are txs
+
+    # todo if no TXS it blows up. if Len(df)=0 it blows up.  datetime = df.iloc[-1]['datetime']    so check that there are txs
     return
 
 
@@ -412,9 +426,11 @@ def sendSMS(msg):
 
 def getDiviScanInfo(command):
     addr = 'https://api.diviproject.org/v1/' + command + '/'
-    resp = requests.get(addr)
+
     try:
+        resp = requests.get(addr)
         resp = resp.json()
+        #todo trap this better. sometimes the response is bad (not json, and sometimes the get fails)
     except:
         resp = resp.text
         return resp
@@ -431,13 +447,13 @@ def checkFork():
     print("wallet block : " + walletblock)
     print("Chain block : " + chainblock)
     if chainblock != walletblock:
-        msg = "walletblock: {}  chainblock: {} Wallet may be forked!".format(walletblock, chainblock)
+        msg = "wallet: {} - walletblock: {}  chainblock: {}".format(gwalletname,walletblock, chainblock)
         return msg
     chainhash = chaininfo[0]['hash']
     print("wallet hash : " + wallethash)
     print("chain hash : " + chainhash)
     if chainhash != wallethash:
-        msg = "Hashes don't Match. Wallet may be forked!"
+        msg = msg + '\n' + "Hashes don't Match. Wallet may be forked!"
         return msg
     msg = "OK"
     return msg
@@ -498,6 +514,7 @@ def multiSend(amount, address, lot):
 # locale.setlocale(locale.LC_ALL, 'en_US.utf8')
 def main(argv):
     global gforkcount
+    global gstakingcount
     global config
     txs = ''
     resp = ''
@@ -509,7 +526,7 @@ def main(argv):
     if len(sys.argv) == 1:
         print("********** Divinci *****************")
         print("<recordday>       to record income results from the last 24 hours")
-        print("<checkfork>       to check if the wallet is on the main blockchain")
+        print("<checkhealth>       to check if the wallet is on the main blockchain")
         print("<txs> <days>      to see transactions from last <days>")
         print("<staked> <days>   check for staking rewards over last <days>")
         print("<lottery>         check to see if you won last lottery")
@@ -532,7 +549,7 @@ def main(argv):
     args = sys.argv[2:]
 
     if command not in ['balance', 'send', 'multisend', 'lottery', 'recordday',
-                       'info', 'checkfork', 'smstest', 'lock', 'SMSinfo']:
+                       'info', 'checkhealth', 'smstest', 'lock', 'SMSinfo']:
         if len(args) != 1:
             print("incorrect number of arguments for command")
             if command == 'price':
@@ -624,21 +641,47 @@ def main(argv):
         print("Staking status:" + str(GetStakingStatus()))
         exit()
 
-    if command == 'checkfork':
+    if command == 'checkhealth':
+        #first check if the wallet is forked and send message if its forked 5 times in a row
         message = checkFork()
         if message != "OK":
             gforkcount = gforkcount + 1
             if gforkcount >= 5:  # make sure the blockcount or hash doesnt match 5 times
                 sendSMS(message)
-                print(message)
+                print(message + " Forkcounter = " + str(gforkcount))
                 gforkcount = 0
         else:
-            print("Wallet is on correct fork of Divi blockchain. Forkcounter = " + str(gforkcount))
+            print("Wallet is on correct fork of Divi blockchain.")
             gforkcount = 0
         config['forkcount'] = gforkcount
+
+        # first check if the wallet is staking and send message if its staking 5 times in a row
+        message = GetStakingStatus()
+        if message != True:
+            gstakingcount = gstakingcount + 1
+            if gstakingcount >= 5:  # make sure the staking status is off 5 times in a row
+                message=gwalletname + " is not staking"
+                sendSMS(message)
+                print(message)
+                gstakingcount = 0
+                try:
+                    resp = cmd("walletlock")
+                    resp = cmd("walletpassphrase", **{"pw": gacctpw, "time": "0", "staking": "true"})
+                    # txs = json.loads(resp)
+                except:
+                    print(gwalletname + 'wallet unable to lock and not staking')
+                    pprint(resp)
+                    exit()
+
+        else:
+            gstakingcount = 0
+            print(gwalletname + ': staking ' + str(message))
+
+        config['stakingcount'] = gstakingcount
+
         # update the fork counter
         cwd=os.getcwd()
-        with open(cwd+'divinci.conf', 'w') as cfgfile:
+        with open(cwd+'/divinci.conf', 'w') as cfgfile:
             json.dump(config, cfgfile, indent=4)
         cfgfile.close()
         exit()
@@ -719,6 +762,7 @@ def main(argv):
 
     if command == 'lock':
         try:
+            resp = cmd("walletlock")
             resp = cmd("walletpassphrase", **{"pw": gacctpw, "time": "0", "staking": "true"})
             # txs = json.loads(resp)
         except:
@@ -752,6 +796,7 @@ gtoken = config['token']
 gfromphone = config['fromphone']
 gtophone = config['tophone']
 gforkcount = config['forkcount']
+gstakingcount = config['stakingcount']
 gacctpw = config['acctpw']
 gwalletname = config['walletname']
 gstakesize = 418
