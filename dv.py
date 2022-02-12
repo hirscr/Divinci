@@ -50,6 +50,9 @@ def cmd(command, **kargs):
         if command == "getblock":
             com = [core, command, kargs.get("hash")]
 
+        if command == "getinfo":
+            com = [core, command]
+
         if command == "getblockhash":
             com = [core, command, kargs.get("blocknum")]
 
@@ -424,8 +427,8 @@ def sendSMS(msg):
     return
 
 
-def getDiviScanInfo(command):
-    addr = 'https://api.diviproject.org/v1/' + command + '/'
+def getDiviScanInfo():
+    addr = 'https://api.diviscan.io/info'
 
     try:
         resp = requests.get(addr)
@@ -439,21 +442,22 @@ def getDiviScanInfo(command):
 
 def checkFork():
     msg=""
-    walletblock = cmd("getblockcount")
-    wallethash = cmd("getblockhash", **{"blocknum": walletblock})
-    chaininfo = getDiviScanInfo("blocks")
+    info=json.loads(cmd('getinfo'))
+    wallet_block = str(info['blocks'])
+    wallet_difficulty = str(info['difficulty'])
+    chaininfo = getDiviScanInfo()
     chainblock="Diviscan not available"
     if not isinstance(chaininfo, str):
-        chainblock = str(chaininfo[0]['height'])
-    print("wallet block : " + walletblock)
+        chainblock = str(chaininfo['result']['blocks'])
+        chain_difficulty = str(chaininfo['result']['difficulty'])
+    print("wallet block : " + wallet_block)
     print("Chain block : " + chainblock)
-    if chainblock != walletblock:
-        msg = "wallet: {} - walletblock: {}  chainblock: {}".format(gwalletname,walletblock, chainblock)
+    if chainblock != wallet_block:
+        msg = "wallet: {} - walletblock: {}  chainblock: {}".format(gwalletname,wallet_block, chainblock)
         return msg
-    chainhash = chaininfo[0]['hash']
-    print("wallet hash : " + wallethash)
-    print("chain hash : " + chainhash)
-    if chainhash != wallethash:
+    print("wallet difficulty : " + wallet_difficulty)
+    print("chain difficulty : " + chain_difficulty)
+    if chain_difficulty != wallet_difficulty:
         msg = msg + '\n' + "Hashes don't Match. Wallet may be forked!"
         return msg
     msg = "OK"
@@ -548,6 +552,11 @@ def main(argv):
 
     command = sys.argv[1]
     args = sys.argv[2:]
+    if command not in ['balance', 'send', 'multisend', 'lottery', 'recordday',
+                       'info', 'checkhealth', 'smstest', 'lock', 'SMSinfo',
+                       'txs','staked','sent','price','tail','unlock']:
+        print("{} isnt a command".format(command))
+        exit()
 
     if command not in ['balance', 'send', 'multisend', 'lottery', 'recordday',
                        'info', 'checkhealth', 'smstest', 'lock', 'SMSinfo']:
@@ -800,7 +809,7 @@ gforkcount = config['forkcount']
 gstakingcount = config['stakingcount']
 gacctpw = config['acctpw']
 gwalletname = config['walletname']
-gstakesize = 418
+gstakesize = 380
 
 if __name__ == "__main__":
     main(sys.argv[1:])
