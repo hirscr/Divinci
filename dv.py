@@ -178,7 +178,7 @@ def getRecentTXs(df, seconds):
 # ================================
 def getStakeTXs(df):
     global gstakesize
-    ndf=df.loc[df['category'] == 'stake_reward']
+    ndf=df.loc[df['category'] == 'stake_reward+']
     if len(ndf['amount'])>0:
         gstakesize=ndf['amount'].values[0]
     return ndf
