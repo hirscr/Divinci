@@ -179,6 +179,7 @@ def getRecentTXs(df, seconds):
 def getStakeTXs(df):
     global gstakesize
     ndf=df.loc[df['category'] == 'stake_reward+']
+    ndf = ndf + df.loc[df['category'] == 'stake_reward']
     if len(ndf['amount'])>0:
         gstakesize=ndf['amount'].values[0]
     return ndf
@@ -335,8 +336,14 @@ def recordday():
         # lets get how much was sent to us
         received = getReceiveTXs(df)["amount"].sum()
 
+        #whats the price of divi?
+        d = GetPrice('divi')
+
         # now lets gather the stakes using a new dataframe
-        stakes = len(getStakeTXs(df))
+        stakesdf=getStakeTXs(df)
+        stakes = len(stakesdf)
+        stakesdf['txincome'] = d * stakesdf.amount
+        dailyincome=df['txincome'].sum()
 
         # get how much was sent out of the wallet
         sent = getSendTXs(df)["amount"].sum()
@@ -365,12 +372,10 @@ def recordday():
         multiple = secondsinyear / ginterval
         aror = ror * multiple
 
-        d = GetPrice('divi')
-
 
         # ok, lets write this shit
         row = [dfdatetime, balance, lotterywins, received, stakes, income, ror, aror, GetPrice('bitcoin'), d,
-               d * stakes * gstakesize, avgdifficulty]
+               dailyincome, avgdifficulty]
         WriteDailyData(row)
         print("datetime= {} balance = {}, Stakes = {}".format(dfdatetime, balance, stakes))
 
@@ -379,7 +384,7 @@ def recordday():
     if walletfailed == False:
         # calculate staking income
         stakemsg = "Hello from " + gwalletname + "! Daily income: " + str(int(stakes)) + " stakes and about $" + str(
-            int(round(d * stakes * gstakesize))) + '\n'
+            int(round(dailyincome))) + '\n'
         # calculate if lottery was won
         if lotterywins != 0:
             numofwins = int(lotterywins / 25200)
@@ -397,7 +402,7 @@ def recordday():
         if GetStakingStatus() == False:
             stakemsg = stakemsg + " Wallet is not staking!"
 
-        stakemsg = stakemsg + "Balance:" + str(getCurrentBalance())
+        stakemsg = stakemsg + "Balance:" + str(int(getCurrentBalance()))
 
     else:
         stakemsg = "WARNING: Wallet Stopped Functioning"
