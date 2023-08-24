@@ -178,8 +178,7 @@ def getRecentTXs(df, seconds):
 # ================================
 def getStakeTXs(df):
     global gstakesize
-    ndf=df.loc[df['category'] == 'stake_reward+']
-    ndf = ndf + df.loc[df['category'] == 'stake_reward']
+    ndf=df.loc[(df['category'] == 'stake_reward+')|(df['category'] == 'stake_reward')]
     if len(ndf['amount'])>0:
         gstakesize=ndf['amount'].values[0]
     return ndf
@@ -341,14 +340,16 @@ def recordday():
 
         # now lets gather the stakes using a new dataframe
         stakesdf=getStakeTXs(df)
+        # print(stakesdf)
         stakes = len(stakesdf)
-        stakesdf['txincome'] = d * stakesdf.amount
-        dailyincome=df['txincome'].sum()
+        stakesdf['txincome'] = d * stakesdf['amount']
+        # print(stakesdf[['txincome','amount']])
+        dailyincome=stakesdf['txincome'].sum()
 
         # get how much was sent out of the wallet
-        sent = getSendTXs(df)["amount"].sum()
+        sent = getSendTXs(df)['amount'].sum()
 
-        avgdifficulty = df["difficulty"].mean()
+        avgdifficulty = df['difficulty'].mean()
 
         # Get current income
         # first load in old csv file if this is not the first time
@@ -414,6 +415,7 @@ def recordday():
 
     if len(stakemsg) != 0:
         sendSMS(stakemsg)
+        print(stakemsg)
 
     # todo if no TXS it blows up. if Len(df)=0 it blows up.  datetime = df.iloc[-1]['datetime']    so check that there are txs
     return
