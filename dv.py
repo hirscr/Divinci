@@ -11,13 +11,17 @@ import subprocess
 import datetime
 import pytz
 from pprint import pprint
-from twilio.rest import Client
+
+from utils import logger
+from comms import Communicator
 
 
-# Version 0.1
+# Version 0.2
 # Robert Hirsch
 # hirscr@me.com
 
+communicator = Communicator()
+communicator.load()
 
 # ================================
 # =======functions================
@@ -33,7 +37,6 @@ def cmd(command, **kargs):
     # some args may be address, amounts, intervals, etc
     core = ghomedir + "divi-cli"
     com = [core, command]
-    out = 'boo'
     if len(kargs) != 0:
         if command == "walletpassphrase":
             if kargs.get("staking") != "":
@@ -69,7 +72,7 @@ def cmd(command, **kargs):
         out = (result.stdout.strip()).decode("utf-8")
     except OSError as e:
         pprint(result)
-        print("likely you hav directory wrong")
+        print("likely you have directory wrong")
     return out
 
 
@@ -131,6 +134,7 @@ def printTXs(df):
 # output: wallet balance
 # ================================
 def getCurrentBalance():
+    walletinfo={}
     try:
         walletinfo = json.loads(cmd("getwalletinfo"))
     except:
@@ -312,10 +316,6 @@ def recordday():
         df = getRecentTXs(df, ginterval)
 
     stakes = 0
-    d = 0
-    balance = 0
-    oldbalance = 0
-    income = 0
     lotterywins = 0
     received = 0
     sent = 0.0
@@ -324,6 +324,7 @@ def recordday():
 
     if len(df) != 0:  # make sure some stakes have actually come in
         # get current datetime
+
         dfdatetime = df.iloc[-1]['datetime']
 
         # lets get a balance
@@ -414,23 +415,15 @@ def recordday():
 
 
     if len(stakemsg) != 0:
-        sendSMS(stakemsg)
+        SendMessage(stakemsg)
         print(stakemsg)
 
     # todo if no TXS it blows up. if Len(df)=0 it blows up.  datetime = df.iloc[-1]['datetime']    so check that there are txs
     return
 
 
-def sendSMS(msg):
-    client = Client(gsid, gtoken)
-
-    message = client.messages.create(
-        body=msg,
-        from_=gfromphone,
-        to=gtophone
-    )
-
-    print("twilio message-id" + message.sid)
+def SendMessage(msg):
+    communicator.msg('telegram',msg)
     return
 
 
@@ -664,7 +657,7 @@ def main(argv):
         if message != "OK":
             gforkcount = gforkcount + 1
             if gforkcount >= 5:  # make sure the blockcount or hash doesnt match 5 times
-                sendSMS(message)
+                SendMessage(message)
                 print(message + " Forkcounter = " + str(gforkcount))
                 gforkcount = 0
         else:
@@ -678,7 +671,7 @@ def main(argv):
             gstakingcount = gstakingcount + 1
             if gstakingcount >= 5:  # make sure the staking status is off 5 times in a row
                 message=gwalletname + " is not staking"
-                sendSMS(message)
+                SendMessage(message)
                 print(message)
                 gstakingcount = 0
                 try:
@@ -704,12 +697,12 @@ def main(argv):
         exit()
 
     if command == 'smstest':
-        sendSMS('Hola! from ' + gwalletname)
+        SendMessage('Hola! from ' + gwalletname)
 
     if command == 'SMSinfo':
         msg = "wallet: " + gwalletname + '\n'
         msg = msg + "Balance: " + str(getCurrentBalance()) + '\n'
-        sendSMS(msg)
+        SendMessage(msg)
 
     if command in ['send', 'multisend']:
         if len(args) < 2:
@@ -808,10 +801,6 @@ gtimezone = config['timezone']
 gdatafilename = config['datafile']
 ghomedir = config['homedir']
 ginterval = config['interval']
-gsid = config['sid']
-gtoken = config['token']
-gfromphone = config['fromphone']
-gtophone = config['tophone']
 gforkcount = config['forkcount']
 gstakingcount = config['stakingcount']
 gacctpw = config['acctpw']
