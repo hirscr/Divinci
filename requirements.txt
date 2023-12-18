@@ -1,8 +1,9 @@
-pandas>=1.1.5
-requests>=2.25.1
-pytz>=2019.2
-twilio>=6.50.1
-setuptools>=51.1.0.post20201221
-DateTime>=4.3
-insultgenerator>=1.0.3
-PyYAML>=3.12
+PyYAML~=3.12
+requests~=2.25.1
+
+pandas~=1.1.5
+DateTime~=4.3
+pytz~=2019.2
+twilio~=6.50.1
+insultgenerator~=1.0.3
+setuptools~=51.1.0.post20201221
