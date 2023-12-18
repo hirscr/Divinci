@@ -7,3 +7,4 @@ pytz~=2019.2
 twilio~=6.50.1
 insultgenerator~=1.0.3
 setuptools~=51.1.0.post20201221
+python-telegram-bot ~=20.7
