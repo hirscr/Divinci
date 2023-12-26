@@ -4,41 +4,36 @@ import configparser
 from utils import truthy
 from utils import logger
 from datetime import datetime
-import telegram
+# import telegram
 import logging
-from telegram import Update
-from telegram.ext import Updater, CommandHandler, CallbackContext
+import requests
+import json
+# from telegram import Update
+# from telegram.ext import Updater, CommandHandler, CallbackContext
 from insultgenerator import phrases
-
 
 class Communicator:
     def __init__(self):
         self.reset()
         self.load()
 
-        self.telegram = telegram.Bot(token=self.comms['telegram_bot_token'])
-        self.telegram.updater = Updater(token=self.comms['telegram_bot_token'])
-        self.telegram.dispatcher = self.telegram.updater.dispatcher
+    def send_telegram_message(self):
+        response = {}
+        api_key = self.comms['telegram_bot_token']
+        headers = {'Content-Type': 'application/json',
+                   'Proxy-Authorization': 'Basic base64'}
+        data_dict = {'chat_id': self.comms['telegram_groupID'],
+                     'text': self.msg,
+                     'parse_mode': 'HTML',
+                     'disable_notification': True}
+        data = json.dumps(data_dict)
+        url = f'https://api.telegram.org/bot{api_key}/sendMessage'
 
-        insult_handler = CommandHandler('insult', self.insulter)
-        self.telegram.dispatcher.add_handler(insult_handler)
-
-        balance_handler = CommandHandler('insult', self.balance_reporter)
-        self.telegram.dispatcher.add_handler(balance_handler)
-
-        txns_handler = CommandHandler('insult', self.txns)
-        self.telegram.dispatcher.add_handler(txns_handler)
-
-        help_handler = CommandHandler('help', self.help)
-        self.telegram.dispatcher.add_handler(help_handler)
-
-
-        self.telegram.updater.start_polling()
-        self.command = {'new': False,
-                        'user': '',  # the username of the person commanding the bot
-                        'balance': 0,
-                        'txns': ' ',
-                        'help': False}  # will place an order for x Divi right under lowest sell price
+        response = requests.post(url,
+                                 data=data,
+                                 headers=headers,
+                                 verify=False)
+        return response
 
     def reset(self):
         self.comms = {'twilio_enabled': False,
@@ -54,7 +49,7 @@ class Communicator:
 
     def load(self):
         config = configparser.RawConfigParser()
-        config.read('comms.ini')
+        config.read('comms-example.ini')
 
         try:
             twilio = dict(config["twilio"])
@@ -104,8 +99,8 @@ class Communicator:
         if method == 'telegram' or method == 'BOTH':
             if self.comms['telegram_enabled']:
                 try:
-                    msg = self.comms['telegram_intro'] + ': ' + msg
-                    self.telegram.send_message(text=msg, chat_id=self.comms['telegram_groupID'])
+                    self.msg = self.comms['telegram_intro'] + ': ' + msg
+                    resp=self.send_telegram_message()
                 except Exception as e:
                     logger.setLevel(logging.DEBUG)
                     logger.debug('Error: sending message to Telegram Group')
@@ -115,30 +110,3 @@ class Communicator:
                     logger.debug("telegram message success: ")
         return
 
-    def insulter(self, update: Update, context: CallbackContext):
-        if len(context.args) == 0:
-            target = update.message.from_user.username
-        else:
-            target = context.args[0]
-
-        insult = phrases.get_so_insult_with_action_and_target(str(target), 'he')
-        context.bot.send_message(chat_id=update.effective_chat.id, text=insult)
-        logger.debug(context.bot.username)
-
-    def balance_reporter(self, update: Update, context: CallbackContext):
-        self.command['new'] = True
-        self.command['user'] = update.message.from_user.username
-        self.command['whoseup'] = True
-        logger.debug(self.command['user'])
-
-    def txns(self, update: Update, context: CallbackContext):
-        self.command['new'] = True
-        self.command['user'] = update.message.from_user.username
-        self.command['whoseup'] = True
-        logger.debug(self.command['user'])
-
-    def help(self, update: Update, context: CallbackContext):
-        self.command['new'] = True
-        self.command['user'] = update.message.from_user.username
-        self.command['help'] = True
-        logger.debug(self.command['user'])
