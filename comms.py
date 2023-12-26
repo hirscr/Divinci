@@ -10,7 +10,6 @@ import requests
 import json
 # from telegram import Update
 # from telegram.ext import Updater, CommandHandler, CallbackContext
-from insultgenerator import phrases
 
 class Communicator:
     def __init__(self):
