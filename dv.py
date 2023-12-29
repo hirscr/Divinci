@@ -22,6 +22,7 @@ from comms import Communicator
 
 communicator = Communicator()
 communicator.load()
+testenv = True      #change this to false for VPS operation
 
 # ================================
 # =======functions================
@@ -791,7 +792,11 @@ def main(argv):
 
 
 # first get configuration parameters
-cwd = os.path.expanduser('~')+'/Divinci/'
+if testenv:
+    cwd = "/Users/shandor/Dropbox/Programming/Python/Divinci/"
+else:
+    cwd = os.path.expanduser('~')+'/Divinci/'
+
 with open(cwd + 'divinci.conf', 'r') as cfgfile:
     config = json.load(cfgfile)
 cfgfile.close()

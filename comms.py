@@ -48,7 +48,7 @@ class Communicator:
 
     def load(self):
         config = configparser.RawConfigParser()
-        config.read('comms-example.ini')
+        config.read('comms.ini')
 
         try:
             twilio = dict(config["twilio"])
