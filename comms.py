@@ -4,12 +4,11 @@ import configparser
 from utils import truthy
 from utils import logger
 from datetime import datetime
-# import telegram
 import logging
 import requests
 import json
-# from telegram import Update
-# from telegram.ext import Updater, CommandHandler, CallbackContext
+import os
+
 
 class Communicator:
     def __init__(self):
@@ -47,8 +46,16 @@ class Communicator:
                       }
 
     def load(self):
+
+        filename = 'comms.ini'
+
+        if os.path.isfile(filename):
+            print(f"{filename} exists in the current directory.")
+        else:
+            print(f"{filename} does not exist in the current directory.")
+
         config = configparser.RawConfigParser()
-        config.read('comms.ini')
+        config.read(filename)
 
         try:
             twilio = dict(config["twilio"])
