@@ -320,6 +320,7 @@ def recordday():
     lotterywins = 0
     received = 0
     sent = 0.0
+    dailyincome = 0.0
 
     print("compiling data...")
 
@@ -796,10 +797,13 @@ def main(argv):
 try:
     cwd = "/Users/shandor/Dropbox/Programming/Python/Divinci/"
     with open(cwd + 'divinci.conf', 'r') as cfgfile:
+        print("opening: "+ cwd)
         config = json.load(cfgfile)
 except:
     cwd = os.path.expanduser('~')+'/Divinci/'
+
     with open(cwd + 'divinci.conf', 'r') as cfgfile:
+        print("opening: " + cwd)
         config = json.load(cfgfile)
 cfgfile.close()
 
