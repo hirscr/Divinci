@@ -47,12 +47,11 @@ class Communicator:
 
     def load(self):
 
-        filename = 'comms.ini'
+        # Get the directory of the current script
+        dir_path = os.path.dirname(os.path.realpath(__file__))
 
-        if os.path.isfile(filename):
-            print(f"{filename} exists in the current directory.")
-        else:
-            print(f"{filename} does not exist in the current directory.")
+        # Construct the absolute path of comms.ini
+        filename = os.path.join(dir_path, 'comms.ini')
 
         config = configparser.RawConfigParser()
         config.read(filename)
